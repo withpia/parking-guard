@@ -280,6 +280,7 @@
 
 <script>
 // ── 데이터 ──
+const VISION_API_KEY = 'AIzaSyCHJsStODkPqTiHlNPgr84kTnOV7NBv_EY';
 const STORE_KEY = 'pg_cars_v1';
 let cars = [];
 try { cars = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e) {}
@@ -376,9 +377,22 @@ async function capture() {
   document.getElementById('snap-btn').disabled = true;
 
   try {
-    const { data: { text } } = await Tesseract.recognize(canvas, 'kor+eng', {
-      logger: () => {}
-    });
+    const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+    const res = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64 },
+            features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+          }]
+        })
+      }
+    );
+    const data = await res.json();
+    const text = data.responses?.[0]?.fullTextAnnotation?.text || '';
     const plate = extractPlate(text);
     showResult(plate);
   } catch (e) {
